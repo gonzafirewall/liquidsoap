@@ -662,6 +662,10 @@ and _start ?force ~sync clock =
   in
   Queue.iter clock.sub_clocks (fun c -> start ?force c);
   Atomic.set clock.state (`Started x);
+  (match Unifier.deref clock.controller with
+    | `None -> Unifier.set clock.controller `Top_level
+    | `Top_level -> ()
+    | _ -> raise Invalid_state);
   if sync <> `Passive then _clock_thread ~clock x
 
 and start ?force c =
@@ -686,7 +690,7 @@ let add_pending_clock =
     Gc.finalise finalise c;
     WeakQueue.push pending_clocks c
 
-let create ?(stack = []) ?(controller = `Top_level) ?on_error ?id
+let create ?(stack = []) ?(controller = `None) ?on_error ?id
     ?(sync = `Automatic) () =
   let on_error_queue = Queue.create () in
   (match on_error with None -> () | Some fn -> Queue.push on_error_queue fn);
